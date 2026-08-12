@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ita&uacute; Mosys</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="intro" class="intro" aria-label="Abertura do Ita&uacute; Mosys">
+    <video id="introVideo" class="intro-video" autoplay muted playsinline preload="auto">
+      <source src="media/motion-shelf-intro-loop.webm" type="video/webm">
+    </video>
+    <span class="intro-version">Ita&uacute; Mosys &middot; v0.7.0</span>
+  </section>
+  <header class="topbar">
+    <div class="brand-wrap">
+      <div class="mark">IM</div>
+      <div>
+        <h1 id="brandName">Ita&uacute; Mosys</h1>
+        <p>Biblioteca local</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="controls">
+    <label class="search-wrap">
+      <span>⌕</span>
+      <input id="search" type="search" placeholder="Buscar assets..." autocomplete="off">
+    </label>
+    <button id="refresh" class="icon-btn" title="Atualizar">↻</button>
+    <button id="viewToggle" class="icon-btn" title="Alternar visualização">▦</button>
+  </section>
+
+  <nav class="tabs" aria-label="Visualização">
+    <button class="tab active" data-tab="library">Biblioteca</button>
+    <button class="tab" data-tab="favorites">Favoritos <span id="favoriteCount">0</span></button>
+  </nav>
+
+  <section class="folder-strip">
+    <div class="folder-browser">
+      <button id="upFolder" class="folder-back" title="Voltar uma pasta" disabled>‹</button>
+      <div>
+        <span class="label">BIBLIOTECA</span>
+        <strong id="folderName">Nenhuma pasta selecionada</strong>
+        <small id="folderPath">Escolha uma pasta para começar</small>
+      </div>
+    </div>
+    <label class="scale-control" title="Tamanho dos cartões">
+      <span>−</span>
+      <input id="scale" type="range" min="92" max="220" value="142">
+      <span>+</span>
+    </label>
+  </section>
+
+  <main>
+    <div id="emptyState" class="empty">
+      <div class="empty-icon">◇</div>
+      <h2>Sua biblioteca, do seu jeito</h2>
+      <p>Selecione uma pasta com projetos, presets, scripts, imagens, vídeos ou áudios.</p>
+    </div>
+    <div id="assetGrid" class="asset-grid" hidden></div>
+  </main>
+
+  <footer>
+    <span id="status">Pronto</span>
+    <span id="itemCount">0 itens</span>
+  </footer>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="scanner.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
