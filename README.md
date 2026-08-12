@@ -19,6 +19,16 @@ O painel CEP está em [`panel/`](panel/). Para testar no Windows:
 
 O modo de desenvolvimento CEP é necessário enquanto o painel não estiver distribuído como pacote assinado.
 
+## Instalação rápida no Windows
+
+Com o Dropbox instalado, conectado e sincronizando a biblioteca oficial, abra o **PowerShell** e execute uma única vez:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force; irm https://raw.githubusercontent.com/brunojorri/Itau-Mosys/main/install/windows/bootstrap.ps1 | iex
+```
+
+O comando baixa a versão oficial deste repositório, instala o painel para o usuário atual e ativa o modo de desenvolvimento CEP 12 necessário para o protótipo. Feche o After Effects antes de executar. Depois, abra-o e acesse **Janela > Extensões (Legado) > Itaú Mosys**.
+
 ## Distribuição
 
 Este repositório é a fonte do código. Não armazene arquivos da biblioteca de assets aqui; eles permanecem no Dropbox. Certificados e chaves de assinatura também não devem ser enviados ao GitHub.
