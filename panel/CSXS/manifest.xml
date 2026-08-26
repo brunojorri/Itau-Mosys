@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest ExtensionBundleId="com.autoral.motionshelf" ExtensionBundleVersion="0.7.0" Version="7.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest ExtensionBundleId="com.autoral.motionshelf" ExtensionBundleVersion="0.7.1" Version="7.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.autoral.motionshelf.panel" Version="0.7.0" />
+    <Extension Id="com.autoral.motionshelf.panel" Version="0.7.1" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

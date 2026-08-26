@@ -4,8 +4,8 @@ Itaú Mosys é um painel autoral para Adobe After Effects que organiza e importa
 
 ## Estado atual
 
-- Versão: `0.7.0`
-- Biblioteca oficial: `Itaú Digital Craft_/_MotionSystem` dentro do Dropbox sincronizado localmente.
+- Versão: `0.7.1`
+- Biblioteca oficial: `_MotionSystem`, localizada tanto em `Itaú Digital Craft_/_MotionSystem` quanto diretamente na raiz do Dropbox quando a pasta é compartilhada isoladamente.
 - O painel não permite escolher outra pasta; ele encontra automaticamente a biblioteca oficial no Dropbox de cada usuário.
 - Formatos suportados incluem projetos do After Effects, MOGRTs, presets, scripts, imagens, vídeos e áudio.
 

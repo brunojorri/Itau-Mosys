@@ -1,12 +1,12 @@
 # Itaú Mosys — painel CEP para After Effects
 
-Versão atual: `0.7.0`
+Versão atual: `0.7.1`
 
 Itaú Mosys é um painel autoral para organizar e importar assets no Adobe After Effects a partir da biblioteca oficial sincronizada pelo Dropbox.
 
 ## Recursos
 
-- Localiza automaticamente `Itaú Digital Craft_/_MotionSystem` dentro do Dropbox local.
+- Localiza automaticamente `_MotionSystem` dentro do Dropbox local, esteja ela em `Itaú Digital Craft_/_MotionSystem` ou compartilhada diretamente na raiz do Dropbox.
 - Navega por pastas, com busca, favoritos, grade/lista e ajuste de tamanho dos cartões.
 - Mostra imagens estáticas e prévias animadas para vídeos e GIFs.
 - Lê `thumb.png` e `thumb.mp4` inseridos em MOGRTs.

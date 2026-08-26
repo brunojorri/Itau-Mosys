@@ -254,7 +254,11 @@
         done({ ok: false, error: "Leitor local indisponivel." });
         return;
       }
-      var relativeLibrary = pathUtil.join("Ita\u00fa Digital Craft_", "_MotionSystem");
+      var libraryLocations = [
+        pathUtil.join("Ita\u00fa Digital Craft_", "_MotionSystem"),
+        "_MotionSystem",
+        "Motion System"
+      ];
       var roots = [];
       function addRoot(value) {
         if (value && roots.indexOf(value) === -1) roots.push(value);
@@ -279,13 +283,15 @@
         });
       } catch (_) {}
       for (var index = 0; index < roots.length; index += 1) {
-        var libraryPath = pathUtil.join(roots[index], relativeLibrary);
-        try {
-          if (fs.statSync(libraryPath).isDirectory()) {
-            done({ ok: true, path: libraryPath });
-            return;
-          }
-        } catch (_) {}
+        for (var locationIndex = 0; locationIndex < libraryLocations.length; locationIndex += 1) {
+          var libraryPath = pathUtil.join(roots[index], libraryLocations[locationIndex]);
+          try {
+            if (fs.statSync(libraryPath).isDirectory()) {
+              done({ ok: true, path: libraryPath });
+              return;
+            }
+          } catch (_) {}
+        }
       }
       done({ ok: false, error: "Biblioteca oficial nao encontrada. Confirme o Dropbox e a sincronizacao da pasta Motion System." });
     }
