@@ -99,10 +99,10 @@
   }
   function libraryFolders() {
     var groups = [
+      { id: "aeps", name: "AEPs", type: "project" },
       { id: "mogrts", name: "MoGraphs", type: "mogrt" },
       { id: "svgs", name: "SVGs", type: "image" },
-      { id: "videos", name: "Vídeos", type: "video" },
-      { id: "aeps", name: "AEPs", type: "project" }
+      { id: "videos", name: "Vídeos", type: "video" }
     ];
     return groups.map(function (group) {
       var count = state.catalogItems.filter(function (item) { return item.type === group.type; }).length;
