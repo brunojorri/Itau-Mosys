@@ -1,13 +1,14 @@
 # Itaú Mosys
 
-Itaú Mosys é um painel autoral para Adobe After Effects que organiza e importa assets da biblioteca oficial compartilhada pelo Dropbox.
+Itaú Mosys é um painel autoral para Adobe After Effects que organiza, visualiza e importa os assets oficiais do Motion System hospedados no Cloudflare.
 
 ## Estado atual
 
 - Versão: `0.7.1`
-- Biblioteca oficial: `_MotionSystem`, localizada tanto em `Itaú Digital Craft_/_MotionSystem` quanto diretamente na raiz do Dropbox quando a pasta é compartilhada isoladamente.
-- O painel não permite escolher outra pasta; ele encontra automaticamente a biblioteca oficial no Dropbox de cada usuário.
-- Formatos suportados incluem projetos do After Effects, MOGRTs, presets, scripts, imagens, vídeos e áudio.
+- Biblioteca oficial: catálogo privado hospedado no Cloudflare R2.
+- O painel não permite escolher outra pasta: ele se conecta somente à biblioteca oficial do Motion System.
+- Ao clicar em **Conectar**, o navegador solicita uma autorização única para aquele computador. Em seguida, o painel exibe capas e previews em movimento e baixa o asset selecionado quando ele for utilizado.
+- Formatos disponíveis atualmente: MOGRTs, SVGs e vídeos.
 
 ## Desenvolvimento local
 
@@ -21,17 +22,19 @@ O modo de desenvolvimento CEP é necessário enquanto o painel não estiver dist
 
 ## Instalação rápida no Windows
 
-Com o Dropbox instalado, conectado e sincronizando a biblioteca oficial, abra o **PowerShell** e execute uma única vez:
+Feche o After Effects, abra o **PowerShell** e execute uma única vez:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass -Force; irm https://raw.githubusercontent.com/brunojorri/Itau-Mosys/main/install/windows/bootstrap.ps1 | iex
 ```
 
-O comando baixa a versão oficial deste repositório, instala o painel para o usuário atual e ativa o modo de desenvolvimento CEP 12 necessário para o protótipo. Feche o After Effects antes de executar. Depois, abra-o e acesse **Janela > Extensões (Legado) > Itaú Mosys**.
+O comando baixa a versão oficial deste repositório, instala o painel para o usuário atual e ativa o modo de desenvolvimento CEP 12 necessário para o protótipo. Depois, abra-o e acesse **Janela > Extensões (Legado) > Itaú Mosys**. Use o botão **Conectar** no topo do painel, confirme o acesso no navegador com o e-mail autorizado e retorne ao After Effects.
+
+Não é necessário instalar, sincronizar ou ter acesso ao Dropbox.
 
 ## Distribuição
 
-Este repositório é a fonte do código. Não armazene arquivos da biblioteca de assets aqui; eles permanecem no Dropbox. Certificados e chaves de assinatura também não devem ser enviados ao GitHub.
+Este repositório é a fonte do código. Os assets, capas e previews permanecem em uma biblioteca privada no Cloudflare R2 e não são enviados ao GitHub. Certificados, chaves de assinatura e tokens de acesso também não devem ser enviados ao GitHub.
 
 ## Estrutura
 

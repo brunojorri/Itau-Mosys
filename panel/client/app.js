@@ -79,10 +79,21 @@
     window.crypto.getRandomValues(values);
     return Array.prototype.map.call(values, function (value) { return value.toString(16).padStart(2, "0"); }).join("");
   }
+  function createDeviceId() {
+    if (window.crypto.randomUUID) return window.crypto.randomUUID();
+    var hex = randomHex(16);
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20, 32);
+  }
+  function previewURL(path) {
+    if (!path || !state.accessToken) return "";
+    return CONFIG.apiBase + "/preview/" + encodeURIComponent("previews" + path) + "?token=" + encodeURIComponent(state.accessToken);
+  }
   function remoteItem(asset) {
     var key = assetKey(asset);
     var type = asset.type === "MOGRT" ? "mogrt" : asset.type === "Vídeo" ? "video" : "image";
-    return { path: "r2://" + key, remoteKey: key, name: asset.name, ext: extensionOf(asset.fileName), size: 0, displaySize: asset.size, type: type, previewPath: "", posterPath: "" };
+    var previewPath = previewURL(asset.previewUrl);
+    var posterPath = previewURL(asset.coverUrl);
+    return { path: "r2://" + key, remoteKey: key, name: asset.name, ext: extensionOf(asset.fileName), size: 0, displaySize: asset.size, type: type, previewKind: previewPath ? "video" : "image", previewPath: previewPath, posterPath: posterPath };
   }
 
   function closeIntro() {
@@ -238,6 +249,7 @@
   }
 
   function fileURL(path) {
+    if (/^https?:\/\//i.test(String(path))) return String(path);
     return encodeURI("file:///" + String(path).replace(/\\/g, "/")).replace(/#/g, "%23").replace(/\?/g, "%3F");
   }
 
@@ -356,11 +368,12 @@
 
   function pairPlugin() {
     if (!window.MotionShelfScanner || !window.MotionShelfScanner.remoteRequest) { showToast("Conexão remota indisponível.", true); return; }
-    var device = window.crypto.randomUUID ? window.crypto.randomUUID() : randomHex(16);
+    var device = createDeviceId();
     var secret = randomHex(32);
     var activationUrl = CONFIG.activationBase + "?device=" + encodeURIComponent(device) + "&secret=" + encodeURIComponent(secret);
     if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) window.cep.util.openURLInDefaultBrowser(activationUrl);
     else window.open(activationUrl, "_blank");
+    el.connect.textContent = "Conectando…";
     setBusy("Aguardando autorização no navegador…");
     var attempts = 0;
     var timer = setInterval(function () {
@@ -370,11 +383,13 @@
           clearInterval(timer);
           state.accessToken = result.data.token;
           localStorage.setItem(CONFIG.storagePrefix + ".accessToken", state.accessToken);
+          el.connect.textContent = "Reconectar";
           showToast("Computador autorizado.");
           refresh();
         } else if (attempts >= 90) {
           clearInterval(timer);
           el.status.textContent = "Conexão não concluída";
+          el.connect.textContent = "Conectar";
           showToast("A ativação expirou. Tente conectar novamente.", true);
         }
       });
@@ -384,6 +399,7 @@
   function loadOfficialLibrary() {
     el.folderName.textContent = "Motion System";
     el.folderPath.textContent = state.accessToken ? "Cloudflare R2" : "Conecte este computador";
+    el.connect.textContent = state.accessToken ? "Reconectar" : "Conectar";
     if (state.accessToken) refresh(); else { el.status.textContent = "Conexão necessária"; render(); }
   }
 
