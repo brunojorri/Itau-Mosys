@@ -29,12 +29,14 @@
     var zlib;
     var os;
     var crypto;
+    var https;
     try {
       fs = nodeRequire && nodeRequire("fs");
       pathUtil = nodeRequire && nodeRequire("path");
       zlib = nodeRequire && nodeRequire("zlib");
       os = nodeRequire && nodeRequire("os");
       crypto = nodeRequire && nodeRequire("crypto");
+      https = nodeRequire && nodeRequire("https");
     }
     catch (_) {}
 
@@ -249,54 +251,41 @@
       });
     }
 
-    function resolveOfficialLibrary(done) {
-      if (!fs || !pathUtil || !os) {
-        done({ ok: false, error: "Leitor local indisponivel." });
-        return;
-      }
-      var libraryLocations = [
-        pathUtil.join("Ita\u00fa Digital Craft_", "_MotionSystem"),
-        "_MotionSystem",
-        "Motion System"
-      ];
-      var roots = [];
-      function addRoot(value) {
-        if (value && roots.indexOf(value) === -1) roots.push(value);
-      }
-      function addDropboxInfo(filePath) {
-        try {
-          var info = JSON.parse(fs.readFileSync(filePath, "utf8"));
-          Object.keys(info).forEach(function (key) {
-            if (info[key] && info[key].path) addRoot(info[key].path);
-          });
-        } catch (_) {}
-      }
-      var home = os.homedir();
-      var appData = (typeof process !== "undefined" && process.env && process.env.APPDATA) || pathUtil.join(home, "AppData", "Roaming");
-      addDropboxInfo(pathUtil.join(appData, "Dropbox", "info.json"));
-      try {
-        fs.readdirSync(home).forEach(function (name) {
-          var candidate = pathUtil.join(home, name);
-          try {
-            if (/dropbox/i.test(name) && fs.statSync(candidate).isDirectory()) addRoot(candidate);
-          } catch (_) {}
+    function remoteRequest(method, url, token, payload, done) {
+      if (!https) { done({ ok: false, error: "Conexão remota indisponível." }); return; }
+      var body = payload ? JSON.stringify(payload) : "";
+      var request = https.request(url, { method: method, headers: { "Authorization": token ? "Bearer " + token : "", "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) } }, function (response) {
+        var chunks = [];
+        response.on("data", function (chunk) { chunks.push(chunk); });
+        response.on("end", function () {
+          var text = Buffer.concat(chunks).toString("utf8");
+          try { done({ ok: response.statusCode >= 200 && response.statusCode < 300, status: response.statusCode, data: JSON.parse(text) }); }
+          catch (_) { done({ ok: false, status: response.statusCode, error: text || "Resposta inválida." }); }
         });
-      } catch (_) {}
-      for (var index = 0; index < roots.length; index += 1) {
-        for (var locationIndex = 0; locationIndex < libraryLocations.length; locationIndex += 1) {
-          var libraryPath = pathUtil.join(roots[index], libraryLocations[locationIndex]);
-          try {
-            if (fs.statSync(libraryPath).isDirectory()) {
-              done({ ok: true, path: libraryPath });
-              return;
-            }
-          } catch (_) {}
-        }
-      }
-      done({ ok: false, error: "Biblioteca oficial nao encontrada. Confirme o Dropbox e a sincronizacao da pasta Motion System." });
+      });
+      request.on("error", function (error) { done({ ok: false, error: error.message || String(error) }); });
+      request.end(body);
     }
 
-    return { available: !!(fs && pathUtil), listFolder: listFolder, scanFolder: listFolder, prepareMogrt: prepareMogrt, resolveOfficialLibrary: resolveOfficialLibrary };
+    function downloadRemoteAsset(apiBase, token, key, done) {
+      if (!https || !fs || !pathUtil || !os || !crypto) { done({ ok: false, error: "Download remoto indisponível." }); return; }
+      var extension = extensionOf(key) || ".bin";
+      var targetDir = pathUtil.join(os.homedir(), "ItauMosys", "cache");
+      var target = pathUtil.join(targetDir, crypto.createHash("sha256").update(key).digest("hex") + extension);
+      fs.mkdir(targetDir, { recursive: true }, function (mkdirError) {
+        if (mkdirError) { done({ ok: false, error: mkdirError.message || String(mkdirError) }); return; }
+        var request = https.get(apiBase + "/download/" + encodeURIComponent(key), { headers: { "Authorization": "Bearer " + token } }, function (response) {
+          if (response.statusCode !== 200) { response.resume(); done({ ok: false, error: response.statusCode === 401 ? "Sua sessão expirou. Conecte o plugin novamente." : "Não foi possível baixar o asset." }); return; }
+          var output = fs.createWriteStream(target);
+          response.pipe(output);
+          output.on("finish", function () { output.close(function () { done({ ok: true, path: target }); }); });
+          output.on("error", function (error) { done({ ok: false, error: error.message || String(error) }); });
+        });
+        request.on("error", function (error) { done({ ok: false, error: error.message || String(error) }); });
+      });
+    }
+
+    return { available: !!(fs && pathUtil), listFolder: listFolder, scanFolder: listFolder, prepareMogrt: prepareMogrt, remoteRequest: remoteRequest, downloadRemoteAsset: downloadRemoteAsset };
   }
 
   var api = createScanner(getNodeRequire());

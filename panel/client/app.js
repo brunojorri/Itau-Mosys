@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var CONFIG = { brandName: "Ita\u00fa Mosys", storagePrefix: "motionShelf.v1", introDuration: 5200 };
+  var CONFIG = { brandName: "Ita\u00fa Mosys", storagePrefix: "motionShelf.v1", introDuration: 5200, apiBase: "https://itau-mosys-plugin-api.brunojorri.workers.dev", activationBase: "https://itau-mosys-portal.brunojorri.workers.dev/api/plugin/activate" };
   var state = {
     folder: "",
     currentFolder: "",
@@ -9,7 +9,8 @@
     favorites: readJSON(CONFIG.storagePrefix + ".favorites", []),
     tab: "library",
     listView: localStorage.getItem(CONFIG.storagePrefix + ".listView") === "true",
-    query: ""
+    query: "",
+    accessToken: localStorage.getItem("motionShelf.v1.accessToken") || ""
   };
   var el = {};
   var toastTimer = null;
@@ -64,6 +65,25 @@
     toastTimer = setTimeout(function () { el.toast.className = ""; }, 4200);
   }
   function setBusy(message) { el.status.textContent = message || "Trabalhando..."; }
+  function assetKey(asset) {
+    if (asset.type === "MOGRT") return "assets/mogrts/" + asset.tag + "/" + asset.fileName;
+    if (asset.type === "Imagem") return "assets/svgs/" + asset.fileName;
+    return "assets/videos/" + asset.fileName;
+  }
+  function extensionOf(name) {
+    var match = /\.[^\.]+$/.exec(String(name).toLowerCase());
+    return match ? match[0] : "";
+  }
+  function randomHex(bytes) {
+    var values = new Uint8Array(bytes);
+    window.crypto.getRandomValues(values);
+    return Array.prototype.map.call(values, function (value) { return value.toString(16).padStart(2, "0"); }).join("");
+  }
+  function remoteItem(asset) {
+    var key = assetKey(asset);
+    var type = asset.type === "MOGRT" ? "mogrt" : asset.type === "Vídeo" ? "video" : "image";
+    return { path: "r2://" + key, remoteKey: key, name: asset.name, ext: extensionOf(asset.fileName), size: 0, displaySize: asset.size, type: type, previewPath: "", posterPath: "" };
+  }
 
   function closeIntro() {
     if (!el.intro || el.intro.className.indexOf("is-closing") !== -1) return;
@@ -106,28 +126,21 @@
   }
 
   function refresh() {
-    if (!state.folder) return;
-    if (activeScan && activeScan.cancel) activeScan.cancel();
-    if (!window.MotionShelfScanner || !window.MotionShelfScanner.available) {
-      el.status.textContent = "Leitor indisponível";
-      showToast("Feche e reabra o After Effects para ativar o leitor rápido.", true);
-      return;
-    }
-    setBusy("Lendo a pasta…");
-    activeScan = window.MotionShelfScanner.listFolder(state.currentFolder, {
-      maxItems: 3500,
-      maxDepth: 8,
-      onProgress: function (progress) {
-        setBusy(progress.previews ? "Preparando " + progress.previews + " previews…" : "Lendo… " + progress.items + " itens");
-      }
-    }, function (result) {
-      activeScan = null;
-      if (!result.ok) {
-        el.status.textContent = "Erro ao ler pasta";
-        showToast(result.error || "Pasta indisponível.", true);
+    if (!state.accessToken) { el.status.textContent = "Conexão necessária"; render(); return; }
+    if (!window.MotionShelfScanner || !window.MotionShelfScanner.remoteRequest) { el.status.textContent = "Leitor indisponível"; return; }
+    setBusy("Atualizando biblioteca…");
+    window.MotionShelfScanner.remoteRequest("GET", CONFIG.apiBase + "/catalog", state.accessToken, null, function (result) {
+      if (!result.ok || !result.data || !result.data.length) {
+        state.accessToken = "";
+        localStorage.removeItem(CONFIG.storagePrefix + ".accessToken");
+        el.status.textContent = "Conexão necessária";
+        render();
+        showToast((result.data && result.data.error) || result.error || "Conecte o plugin novamente.", true);
         return;
       }
-      acceptItems(result.items || [], result.truncated, result.path);
+      state.folder = "Motion System";
+      state.currentFolder = state.folder;
+      acceptItems(result.data.map(remoteItem), false, state.folder);
     });
   }
 
@@ -195,7 +208,7 @@
   function cardHTML(item) {
     var favorite = state.favorites.indexOf(item.path) !== -1;
     var isFolder = item.type === "folder";
-    var info = isFolder ? "" : item.ext.toUpperCase().replace(".", "") + " · " + formatBytes(item.size);
+    var info = isFolder ? "" : item.ext.toUpperCase().replace(".", "") + " · " + (item.displaySize || formatBytes(item.size));
     return '<article class="asset-card' + (isFolder ? " folder-card" : "") + '" data-path="' + escapeHTML(item.path) + '" data-type="' + escapeHTML(item.type) + '" title="' + escapeHTML(item.path) + '">' +
       '<div class="thumb">' +
         '<span class="file-glyph">' + escapeHTML(glyphFor(item)) + '</span>' +
@@ -300,6 +313,17 @@
 
   function useAsset(path) {
     var item = state.items.filter(function (candidate) { return candidate.path === path; })[0];
+    if (item && item.remoteKey) {
+      if (!window.MotionShelfScanner || !window.MotionShelfScanner.downloadRemoteAsset) { showToast("Download remoto indisponível.", true); return; }
+      setBusy("Baixando asset…");
+      window.MotionShelfScanner.downloadRemoteAsset(CONFIG.apiBase, state.accessToken, item.remoteKey, function (downloaded) {
+        if (!downloaded || !downloaded.ok) { el.status.textContent = "Download não concluído"; showToast((downloaded && downloaded.error) || "Não foi possível baixar o asset.", true); return; }
+        item.path = downloaded.path;
+        delete item.remoteKey;
+        useAsset(downloaded.path);
+      });
+      return;
+    }
     if (item && item.type === "mogrt") {
       if (!window.MotionShelfScanner || !window.MotionShelfScanner.prepareMogrt) {
         showToast("O preparador de MOGRT não está disponível. Feche e reabra o painel.", true);
@@ -330,32 +354,44 @@
     });
   }
 
+  function pairPlugin() {
+    if (!window.MotionShelfScanner || !window.MotionShelfScanner.remoteRequest) { showToast("Conexão remota indisponível.", true); return; }
+    var device = window.crypto.randomUUID ? window.crypto.randomUUID() : randomHex(16);
+    var secret = randomHex(32);
+    var activationUrl = CONFIG.activationBase + "?device=" + encodeURIComponent(device) + "&secret=" + encodeURIComponent(secret);
+    if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) window.cep.util.openURLInDefaultBrowser(activationUrl);
+    else window.open(activationUrl, "_blank");
+    setBusy("Aguardando autorização no navegador…");
+    var attempts = 0;
+    var timer = setInterval(function () {
+      attempts += 1;
+      window.MotionShelfScanner.remoteRequest("POST", CONFIG.apiBase + "/session", "", { device: device, secret: secret }, function (result) {
+        if (result.ok && result.data && result.data.token) {
+          clearInterval(timer);
+          state.accessToken = result.data.token;
+          localStorage.setItem(CONFIG.storagePrefix + ".accessToken", state.accessToken);
+          showToast("Computador autorizado.");
+          refresh();
+        } else if (attempts >= 90) {
+          clearInterval(timer);
+          el.status.textContent = "Conexão não concluída";
+          showToast("A ativação expirou. Tente conectar novamente.", true);
+        }
+      });
+    }, 2000);
+  }
+
   function loadOfficialLibrary() {
-    if (!window.MotionShelfScanner || !window.MotionShelfScanner.resolveOfficialLibrary) {
-      el.status.textContent = "Biblioteca indisponivel";
-      render();
-      return;
-    }
-    setBusy("Conectando a biblioteca oficial...");
-    window.MotionShelfScanner.resolveOfficialLibrary(function (result) {
-      if (!result || !result.ok) {
-        el.status.textContent = "Biblioteca indisponivel";
-        render();
-        showToast((result && result.error) || "Nao foi possivel localizar a biblioteca oficial.", true);
-        return;
-      }
-      state.folder = result.path;
-      state.currentFolder = result.path;
-      el.folderName.textContent = basename(result.path);
-      el.folderPath.textContent = result.path;
-      refresh();
-    });
+    el.folderName.textContent = "Motion System";
+    el.folderPath.textContent = state.accessToken ? "Cloudflare R2" : "Conecte este computador";
+    if (state.accessToken) refresh(); else { el.status.textContent = "Conexão necessária"; render(); }
   }
 
   function init() {
-    ["intro", "introVideo", "brandName", "search", "refresh", "viewToggle", "scale", "upFolder", "folderName", "folderPath", "assetGrid", "emptyState", "status", "itemCount", "favoriteCount", "toast"].forEach(function (id) { el[id] = byId(id); });
+    ["intro", "introVideo", "brandName", "search", "refresh", "connect", "viewToggle", "scale", "upFolder", "folderName", "folderPath", "assetGrid", "emptyState", "status", "itemCount", "favoriteCount", "toast"].forEach(function (id) { el[id] = byId(id); });
     el.brandName.textContent = CONFIG.brandName;
     el.refresh.addEventListener("click", refresh);
+    el.connect.addEventListener("click", pairPlugin);
     el.upFolder.addEventListener("click", goUp);
     el.search.addEventListener("input", function () { state.query = this.value; render(); });
     el.viewToggle.addEventListener("click", function () {
