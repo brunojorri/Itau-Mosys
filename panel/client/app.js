@@ -6,6 +6,7 @@
     folder: "",
     currentFolder: "",
     items: [],
+    catalogItems: [],
     favorites: readJSON(CONFIG.storagePrefix + ".favorites", []),
     tab: "library",
     listView: localStorage.getItem(CONFIG.storagePrefix + ".listView") === "true",
@@ -95,6 +96,31 @@
     var posterPath = previewURL(asset.coverUrl);
     return { path: "r2://" + key, remoteKey: key, name: asset.name, ext: extensionOf(asset.fileName), size: 0, displaySize: asset.size, type: type, previewKind: previewPath ? "video" : "image", previewPath: previewPath, posterPath: posterPath };
   }
+  function libraryFolders() {
+    var groups = [
+      { id: "mogrts", name: "MoGraphs", type: "mogrt" },
+      { id: "svgs", name: "SVGs", type: "image" },
+      { id: "videos", name: "Vídeos", type: "video" }
+    ];
+    return groups.map(function (group) {
+      var count = state.catalogItems.filter(function (item) { return item.type === group.type; }).length;
+      return { path: "r2://folder/" + group.id, folderId: group.id, name: group.name, type: "folder", displaySize: count + (count === 1 ? " asset" : " assets") };
+    });
+  }
+  function itemsForFolder(folder) {
+    if (!folder || folder === "Motion System") return libraryFolders();
+    var types = { "r2://folder/mogrts": "mogrt", "r2://folder/svgs": "image", "r2://folder/videos": "video" };
+    return state.catalogItems.filter(function (item) { return item.type === types[folder]; });
+  }
+  function showFolder(folder) {
+    state.currentFolder = folder || state.folder;
+    state.items = itemsForFolder(state.currentFolder);
+    var folderNames = { "r2://folder/mogrts": "MoGraphs", "r2://folder/svgs": "SVGs", "r2://folder/videos": "Vídeos" };
+    el.folderName.textContent = folderNames[state.currentFolder] || basename(state.currentFolder);
+    el.folderPath.textContent = state.currentFolder === state.folder ? "Cloudflare R2" : "Motion System";
+    el.upFolder.disabled = samePath(state.currentFolder, state.folder);
+    render();
+  }
 
   function closeIntro() {
     if (!el.intro || el.intro.className.indexOf("is-closing") !== -1) return;
@@ -149,20 +175,12 @@
         showToast((result.data && result.data.error) || result.error || "Conecte o plugin novamente.", true);
         return;
       }
+      state.catalogItems = result.data.map(remoteItem);
       state.folder = "Motion System";
-      state.currentFolder = state.folder;
-      acceptItems(result.data.map(remoteItem), false, state.folder);
+      if (!state.currentFolder) state.currentFolder = state.folder;
+      el.status.textContent = "Biblioteca atualizada";
+      showFolder(state.currentFolder);
     });
-  }
-
-  function acceptItems(items, truncated, path) {
-    state.items = items;
-    state.currentFolder = path || state.currentFolder || state.folder;
-    el.folderName.textContent = basename(state.currentFolder);
-    el.folderPath.textContent = state.currentFolder;
-    el.upFolder.disabled = samePath(state.currentFolder, state.folder);
-    el.status.textContent = truncated ? "Biblioteca atualizada (limite de 3.500)" : "Biblioteca atualizada";
-    render();
   }
 
   function normalizedPath(path) { return String(path || "").replace(/\//g, "\\").replace(/[\\]+$/, "").toLowerCase(); }
@@ -172,17 +190,14 @@
     return clean.replace(/[\\\/][^\\\/]+$/, "");
   }
   function openFolder(path) {
-    var target = normalizedPath(path), root = normalizedPath(state.folder);
-    if (target !== root && target.indexOf(root + "\\") !== 0) return;
-    state.currentFolder = path;
+    if (path !== state.folder && !/^r2:\/\/folder\/(mogrts|svgs|videos)$/.test(path)) return;
     state.query = "";
     el.search.value = "";
-    refresh();
+    showFolder(path);
   }
   function goUp() {
     if (!state.currentFolder || samePath(state.currentFolder, state.folder)) return;
-    var parent = parentPath(state.currentFolder);
-    openFolder(normalizedPath(parent).indexOf(normalizedPath(state.folder)) === 0 ? parent : state.folder);
+    openFolder(state.folder);
   }
 
   function visibleItems() {
@@ -219,7 +234,7 @@
   function cardHTML(item) {
     var favorite = state.favorites.indexOf(item.path) !== -1;
     var isFolder = item.type === "folder";
-    var info = isFolder ? "" : item.ext.toUpperCase().replace(".", "") + " · " + (item.displaySize || formatBytes(item.size));
+    var info = isFolder ? (item.displaySize || "") : item.ext.toUpperCase().replace(".", "") + " · " + (item.displaySize || formatBytes(item.size));
     return '<article class="asset-card' + (isFolder ? " folder-card" : "") + '" data-path="' + escapeHTML(item.path) + '" data-type="' + escapeHTML(item.type) + '" title="' + escapeHTML(item.path) + '">' +
       '<div class="thumb">' +
         '<span class="file-glyph">' + escapeHTML(glyphFor(item)) + '</span>' +
