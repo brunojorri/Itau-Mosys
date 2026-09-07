@@ -69,6 +69,7 @@
   function assetKey(asset) {
     if (asset.type === "MOGRT") return "assets/mogrts/" + asset.tag + "/" + asset.fileName;
     if (asset.type === "Imagem") return "assets/svgs/" + asset.fileName;
+    if (asset.type === "AEP") return "assets/aeps/" + asset.fileName;
     return "assets/videos/" + asset.fileName;
   }
   function extensionOf(name) {
@@ -91,7 +92,7 @@
   }
   function remoteItem(asset) {
     var key = assetKey(asset);
-    var type = asset.type === "MOGRT" ? "mogrt" : asset.type === "Vídeo" ? "video" : "image";
+    var type = asset.type === "MOGRT" ? "mogrt" : asset.type === "Vídeo" ? "video" : asset.type === "AEP" ? "project" : "image";
     var previewPath = previewURL(asset.previewUrl);
     var posterPath = previewURL(asset.coverUrl);
     return { path: "r2://" + key, remoteKey: key, name: asset.name, ext: extensionOf(asset.fileName), size: 0, displaySize: asset.size, type: type, previewKind: previewPath ? "video" : "image", previewPath: previewPath, posterPath: posterPath };
@@ -100,7 +101,8 @@
     var groups = [
       { id: "mogrts", name: "MoGraphs", type: "mogrt" },
       { id: "svgs", name: "SVGs", type: "image" },
-      { id: "videos", name: "Vídeos", type: "video" }
+      { id: "videos", name: "Vídeos", type: "video" },
+      { id: "aeps", name: "AEPs", type: "project" }
     ];
     return groups.map(function (group) {
       var count = state.catalogItems.filter(function (item) { return item.type === group.type; }).length;
@@ -109,13 +111,13 @@
   }
   function itemsForFolder(folder) {
     if (!folder || folder === "Motion System") return libraryFolders();
-    var types = { "r2://folder/mogrts": "mogrt", "r2://folder/svgs": "image", "r2://folder/videos": "video" };
+    var types = { "r2://folder/mogrts": "mogrt", "r2://folder/svgs": "image", "r2://folder/videos": "video", "r2://folder/aeps": "project" };
     return state.catalogItems.filter(function (item) { return item.type === types[folder]; });
   }
   function showFolder(folder) {
     state.currentFolder = folder || state.folder;
     state.items = itemsForFolder(state.currentFolder);
-    var folderNames = { "r2://folder/mogrts": "MoGraphs", "r2://folder/svgs": "SVGs", "r2://folder/videos": "Vídeos" };
+    var folderNames = { "r2://folder/mogrts": "MoGraphs", "r2://folder/svgs": "SVGs", "r2://folder/videos": "Vídeos", "r2://folder/aeps": "AEPs" };
     el.folderName.textContent = folderNames[state.currentFolder] || basename(state.currentFolder);
     el.folderPath.textContent = state.currentFolder === state.folder ? "Cloudflare R2" : "Motion System";
     el.upFolder.disabled = samePath(state.currentFolder, state.folder);
@@ -190,7 +192,7 @@
     return clean.replace(/[\\\/][^\\\/]+$/, "");
   }
   function openFolder(path) {
-    if (path !== state.folder && !/^r2:\/\/folder\/(mogrts|svgs|videos)$/.test(path)) return;
+    if (path !== state.folder && !/^r2:\/\/folder\/(mogrts|svgs|videos|aeps)$/.test(path)) return;
     state.query = "";
     el.search.value = "";
     showFolder(path);
